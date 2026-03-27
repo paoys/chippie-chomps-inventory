@@ -82,17 +82,17 @@
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1.5">New Password</label>
               <div class="relative">
-                <input v-model="passwordForm.newPassword" type="password" class="input"
+                <input v-model="passwordForm.newPassword" :type="showPwd ? 'text' : 'password'" class="input pr-10"
                   placeholder="At least 8 characters" />
-                <!-- <button type="button" @click="showPwd = !showPwd"
+                <button type="button" @click="showPwd = !showPwd"
                   class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
                   {{ showPwd ? '🙈' : '👁️' }}
-                </button> -->
+                </button>
               </div>
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1.5">Confirm New Password</label>
-              <input v-model="passwordForm.confirmPassword" type="password" class="input"
+              <input v-model="passwordForm.confirmPassword" :type="showPwd ? 'text' : 'password'" class="input"
                 placeholder="Repeat new password" />
               <p v-if="passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword"
                 class="text-xs text-red-500 mt-1">
@@ -175,7 +175,7 @@ const authStore = useAuthStore()
 
 const activeTab = ref(props.initialTab)
 const saving = ref(false)
-// const showPwd = ref(false)
+const showPwd = ref(false)
 
 // Profile form
 const profileForm = ref({

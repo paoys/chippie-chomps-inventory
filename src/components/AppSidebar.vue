@@ -75,12 +75,14 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAppStore } from '../stores/app'
+import { useNotificationsStore } from '../stores/notifications'
 
 defineProps({ isOpen: Boolean })
 const emit = defineEmits(['close', 'open-settings'])
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const notifStore = useNotificationsStore()
 const showSettingsPanel = ref(false)
 
 const navItems = computed(() => [
@@ -91,6 +93,7 @@ const navItems = computed(() => [
   { to: '/sales', icon: '💳', label: 'Sales' },
   { to: '/suppliers', icon: '🏭', label: 'Suppliers' },
   { to: '/reports', icon: '📈', label: 'Reports' },
+  { to: '/notifications', icon: '🔔', label: 'Notifications', badge: notifStore.hasUnread ? notifStore.unreadCount : null },
 ])
 
 const settingsItems = [

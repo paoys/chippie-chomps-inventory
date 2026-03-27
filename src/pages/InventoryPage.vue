@@ -33,7 +33,7 @@
     </div>
 
     <div class="card p-0 overflow-hidden">
-      <div v-if="appStore.loading" class="px-6 py-12 text-center text-gray-400 text-sm">Loading inventory...</div>
+      <div v-if="appStore.loadingProducts" class="px-6 py-12 text-center text-gray-400 text-sm">Loading inventory...</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50/60">

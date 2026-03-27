@@ -11,9 +11,14 @@
           <option v-for="c in appStore.categories" :key="c.id">{{ c.name }}</option>
         </select>
       </div>
-      <button @click="openAdd" class="btn-primary flex items-center gap-2">
-        <span>＋</span> Add Product
-      </button>
+      <div class="flex gap-2">
+        <button @click="manageCatsOpen = true" class="btn-secondary flex items-center gap-2">
+          🗂️ Categories
+        </button>
+        <button @click="openAdd" class="btn-primary flex items-center gap-2">
+          <span>＋</span> Add Product
+        </button>
+      </div>
     </div>
 
     <!-- Error -->
@@ -22,7 +27,7 @@
 
     <div class="card p-0 overflow-hidden">
       <!-- Loading -->
-      <div v-if="appStore.loading" class="px-6 py-12 text-center text-gray-400 text-sm">Loading products...</div>
+      <div v-if="appStore.loadingProducts" class="px-6 py-12 text-center text-gray-400 text-sm">Loading products...</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50/60">
@@ -59,7 +64,7 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="filtered.length === 0 && !appStore.loading">
+            <tr v-if="filtered.length === 0 && !appStore.loadingProducts">
               <td colspan="6" class="px-6 py-12 text-center text-gray-400">No products found.</td>
             </tr>
           </tbody>
@@ -145,6 +150,62 @@
         </template>
       </AppModal>
 
+      <!-- Manage Categories Modal -->
+      <AppModal v-model="manageCatsOpen" title="🗂️ Manage Categories">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Add New Category</label>
+            <div class="flex gap-2">
+              <input v-model="newCatNameManage" class="input flex-1" placeholder="Category name" @keyup.enter="addCategoryFromManage" />
+              <button @click="addCategoryFromManage" class="btn-primary px-4 py-2 text-sm" :disabled="!newCatNameManage.trim()">Add</button>
+            </div>
+            <p v-if="catAddSuccess" class="text-xs text-teal-600 mt-1">✅ Category added!</p>
+            <p v-if="catAddError" class="text-xs text-red-500 mt-1">❌ {{ catAddError }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Existing Categories</label>
+            <div v-if="appStore.loadingCategories" class="text-center py-4 text-gray-400 text-sm">Loading...</div>
+            <div v-else-if="appStore.categories.length === 0" class="text-center py-4 text-gray-400 text-sm">No categories yet.</div>
+            <div v-else class="space-y-1.5 max-h-64 overflow-y-auto">
+              <div v-for="cat in appStore.categories" :key="cat.id"
+                class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors group">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">🏷️</span>
+                  <span class="text-sm font-medium text-gray-700">{{ cat.name }}</span>
+                  <span class="text-xs text-gray-400">({{ appStore.products.filter(p => p.category === cat.name).length }} products)</span>
+                </div>
+                <button @click="confirmDeleteCat(cat)"
+                  class="w-7 h-7 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete category">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <button @click="manageCatsOpen = false" class="btn-secondary">Close</button>
+        </template>
+      </AppModal>
+
+      <!-- Delete Category Confirm -->
+      <AppModal v-model="deleteCatModal" title="🗑️ Delete Category" size="sm">
+        <div class="space-y-3">
+          <p class="text-gray-600">Delete category <strong>{{ deletingCat?.name }}</strong>?</p>
+          <div v-if="appStore.products.filter(p => p.category === deletingCat?.name).length > 0"
+            class="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl px-4 py-3 text-sm">
+            ⚠️ <strong>{{ appStore.products.filter(p => p.category === deletingCat?.name).length }} products</strong> use this category.
+            They will keep the category name but it won't appear in the category filter.
+          </div>
+          <p v-else class="text-sm text-gray-500">No products are using this category.</p>
+        </div>
+        <template #footer>
+          <button @click="deleteCatModal = false" class="btn-secondary">Cancel</button>
+          <button @click="doDeleteCat" class="btn-danger" :disabled="deletingCatSaving">
+            <span v-if="deletingCatSaving" class="animate-spin text-xs mr-1">⏳</span>
+            Delete Category
+          </button>
+        </template>
+      </AppModal>
+
       <!-- Delete confirm -->
       <AppModal v-model="deleteModal" title="🗑️ Delete Product" size="sm">
         <p class="text-gray-600">Are you sure you want to delete <strong>{{ deletingProduct?.name }}</strong>? This
@@ -210,12 +271,42 @@ watch(() => form.value.category, (val) => {
   }
 })
 
-async function saveNewCategory() {
-  if (!newCatName.value.trim()) return
-  const cat = await appStore.addCategory(newCatName.value.trim())
-  if (cat) { form.value.category = cat.name }
-  showNewCat.value = false
-  newCatName.value = ''
+const manageCatsOpen = ref(false)
+const newCatNameManage = ref('')
+const catAddSuccess = ref(false)
+const catAddError = ref('')
+const deleteCatModal = ref(false)
+const deletingCat = ref(null)
+const deletingCatSaving = ref(false)
+
+async function addCategoryFromManage() {
+  if (!newCatNameManage.value.trim()) return
+  catAddSuccess.value = false
+  catAddError.value = ''
+  const exists = appStore.categories.find(c => c.name.toLowerCase() === newCatNameManage.value.trim().toLowerCase())
+  if (exists) { catAddError.value = 'Category already exists.'; return }
+  const result = await appStore.addCategory(newCatNameManage.value.trim())
+  if (result) {
+    catAddSuccess.value = true
+    newCatNameManage.value = ''
+    setTimeout(() => catAddSuccess.value = false, 2000)
+  } else {
+    catAddError.value = appStore.error || 'Failed to add category.'
+  }
+}
+
+function confirmDeleteCat(cat) {
+  deletingCat.value = cat
+  deleteCatModal.value = true
+}
+
+async function doDeleteCat() {
+  if (!deletingCat.value) return
+  deletingCatSaving.value = true
+  await appStore.deleteCategory(deletingCat.value.id)
+  deletingCatSaving.value = false
+  deleteCatModal.value = false
+  deletingCat.value = null
 }
 
 function openAdd() {
@@ -265,8 +356,10 @@ async function doDelete() {
 }
 
 onMounted(async () => {
-  if (appStore.products.length === 0) await appStore.loadProducts()
-  if (appStore.suppliers.length === 0) await appStore.loadSuppliers()
-  if (appStore.categories.length === 0) await appStore.loadCategories()
+  await Promise.all([
+    appStore.products.length === 0 ? appStore.loadProducts() : Promise.resolve(),
+    appStore.suppliers.length === 0 ? appStore.loadSuppliers() : Promise.resolve(),
+    appStore.categories.length === 0 ? appStore.loadCategories() : Promise.resolve(),
+  ])
 })
 </script>

@@ -68,7 +68,7 @@
         <h2 class="font-display font-700 text-gray-800">⚠️ Low Stock Alert</h2>
         <router-link to="/inventory" class="text-sm text-teal-600 font-semibold hover:text-teal-700">View All →</router-link>
       </div>
-      <div v-if="appStore.loading" class="text-center py-8 text-gray-400 text-sm">Loading...</div>
+      <div v-if="appStore.loadingProducts && appStore.loadingSales" class="text-center py-8 text-gray-400 text-sm">Loading...</div>
       <div v-else-if="appStore.lowStockProducts.length === 0" class="text-center py-12 text-gray-400">
         <div class="text-4xl mb-3">🎉</div>
         <div class="font-semibold">All products are well-stocked!</div>
@@ -195,7 +195,10 @@ async function reloadChart() {
 }
 
 onMounted(async () => {
-  if (appStore.products.length === 0) await appStore.loadAll()
+  await Promise.all([
+    appStore.products.length === 0 ? appStore.loadProducts() : Promise.resolve(),
+    appStore.sales.length === 0 ? appStore.loadSales() : Promise.resolve(),
+  ])
   await reloadChart()
 })
 </script>

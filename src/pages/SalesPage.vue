@@ -39,7 +39,7 @@
     </div>
 
     <div class="card p-0 overflow-hidden">
-      <div v-if="appStore.loading" class="px-6 py-12 text-center text-gray-400 text-sm">Loading sales...</div>
+      <div v-if="appStore.loadingSales" class="px-6 py-12 text-center text-gray-400 text-sm">Loading sales...</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50/60">
@@ -190,7 +190,9 @@ async function saveSale() {
 }
 
 onMounted(async () => {
-  if (appStore.sales.length === 0) await appStore.loadSales()
-  if (appStore.products.length === 0) await appStore.loadProducts()
+  await Promise.all([
+    appStore.sales.length === 0 ? appStore.loadSales() : Promise.resolve(),
+    appStore.products.length === 0 ? appStore.loadProducts() : Promise.resolve(),
+  ])
 })
 </script>

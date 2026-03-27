@@ -15,16 +15,14 @@
 import { onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useNotificationsStore } from './stores/notifications'
-import { useAppStore } from './stores/app'
 
 const authStore = useAuthStore()
 const notifStore = useNotificationsStore()
-const appStore = useAppStore()
 
 onMounted(async () => {
   await authStore.init()
+  // Only fetch notifications on load — each page loads its own data independently
   if (authStore.isLoggedIn) {
-    appStore.loadAll()
     notifStore.fetchNotifications().catch(() => notifStore.loadMockNotifications())
   }
 })

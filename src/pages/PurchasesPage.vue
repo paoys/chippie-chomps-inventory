@@ -18,8 +18,15 @@
       </button>
     </div>
 
+    <!-- Stock replenishment toast -->
+    <transition name="slide-down">
+      <div v-if="stockToast" class="fixed top-20 right-6 z-50 bg-teal-600 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold max-w-sm">
+        {{ stockToast }}
+      </div>
+    </transition>
+
     <div class="card p-0 overflow-hidden">
-      <div v-if="appStore.loading" class="px-6 py-12 text-center text-gray-400 text-sm">Loading purchases...</div>
+      <div v-if="appStore.loadingPurchases" class="px-6 py-12 text-center text-gray-400 text-sm">Loading purchases...</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50/60">
@@ -38,12 +45,16 @@
               <td class="px-6 py-3 text-sm text-gray-400">{{ p.date }}</td>
               <td class="px-6 py-3"><span :class="statusBadge(p.status)">{{ p.status }}</span></td>
               <td class="px-6 py-3">
-                <select v-if="p.status !== 'Received'" :value="p.status"
-                  @change="updateStatus(p.id, $event.target.value)" class="input py-1 text-xs w-28">
-                  <option>Pending</option>
-                  <option>In Transit</option>
-                  <option>Received</option>
-                </select>
+                <div v-if="p.status !== 'Received'" class="flex items-center gap-2">
+                  <select :value="p.status" @change="updateStatus(p.id, p.product, p.qty, $event.target.value)"
+                    class="input py-1 text-xs w-28"
+                    :disabled="updatingId === p.id">
+                    <option>Pending</option>
+                    <option>In Transit</option>
+                    <option>Received</option>
+                  </select>
+                  <span v-if="updatingId === p.id" class="text-xs animate-spin">⏳</span>
+                </div>
                 <span v-else class="text-xs text-gray-400">Completed</span>
               </td>
             </tr>
@@ -134,6 +145,9 @@ const search = ref('')
 const statusFilter = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
+const updatingId = ref(null)
+const stockToast = ref('')
+const stockToastTimer = ref(null)
 const saveError = ref('')
 const page = ref(1)
 const perPage = 10
@@ -165,8 +179,17 @@ watch([search, statusFilter], resetPage)
 function statusBadge(s) { return s === 'Received' ? 'badge-green' : s === 'In Transit' ? 'badge-blue' : 'badge-yellow' }
 function calcTotal() { form.value.total = form.value.qty * form.value.unitCost }
 
-async function updateStatus(id, status) {
-  await appStore.updatePurchaseStatus(id, status)
+async function updateStatus(id, productName, qty, status) {
+  updatingId.value = id
+  const result = await appStore.updatePurchaseStatus(id, status)
+  updatingId.value = null
+
+  // Show toast when stock is replenished
+  if (status === 'Received' && result) {
+    if (stockToastTimer.value) clearTimeout(stockToastTimer.value)
+    stockToast.value = `✅ Stock replenished! ${productName} +${qty} units added to inventory.`
+    stockToastTimer.value = setTimeout(() => { stockToast.value = '' }, 4000)
+  }
 }
 
 async function savePO() {
@@ -179,8 +202,10 @@ async function savePO() {
 }
 
 onMounted(async () => {
-  if (appStore.purchases.length === 0) await appStore.loadPurchases()
-  if (appStore.suppliers.length === 0) await appStore.loadSuppliers()
-  if (appStore.products.length === 0) await appStore.loadProducts()
+  await Promise.all([
+    appStore.purchases.length === 0 ? appStore.loadPurchases() : Promise.resolve(),
+    appStore.suppliers.length === 0 ? appStore.loadSuppliers() : Promise.resolve(),
+    appStore.products.length === 0 ? appStore.loadProducts() : Promise.resolve(),
+  ])
 })
 </script>

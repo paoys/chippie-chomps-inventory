@@ -212,6 +212,10 @@ function exportCSV(type) {
 }
 
 onMounted(async () => {
-  if (appStore.products.length === 0 || appStore.sales.length === 0) await appStore.loadAll()
+  await Promise.all([
+    appStore.products.length === 0 ? appStore.loadProducts() : Promise.resolve(),
+    appStore.sales.length === 0 ? appStore.loadSales() : Promise.resolve(),
+    appStore.purchases.length === 0 ? appStore.loadPurchases() : Promise.resolve(),
+  ])
 })
 </script>

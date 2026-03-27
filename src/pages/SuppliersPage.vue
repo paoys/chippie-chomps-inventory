@@ -13,7 +13,7 @@
     <div v-if="appStore.error" class="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">❌ {{
       appStore.error }}</div>
 
-    <div v-if="appStore.loading" class="text-center py-12 text-gray-400 text-sm">Loading suppliers...</div>
+    <div v-if="appStore.loadingSuppliers" class="text-center py-12 text-gray-400 text-sm">Loading suppliers...</div>
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div v-for="s in filtered" :key="s.id"
         class="card hover:shadow-hover hover:-translate-y-0.5 transition-all duration-300">
@@ -40,7 +40,7 @@
           <div class="flex items-center gap-2 text-gray-600"><span>📍</span> {{ s.address }}</div>
         </div>
       </div>
-      <div v-if="filtered.length === 0 && !appStore.loading" class="col-span-full text-center py-12 text-gray-400">No
+      <div v-if="filtered.length === 0 && !appStore.loadingSuppliers" class="col-span-full text-center py-12 text-gray-400">No
         suppliers found.</div>
     </div>
 

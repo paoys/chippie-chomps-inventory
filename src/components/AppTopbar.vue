@@ -12,9 +12,6 @@
 
     <!-- Right actions -->
     <div class="flex items-center gap-2">
-      <!-- Search button -->
-      <!-- <button class="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 text-sm">🔍</button> -->
-
       <!-- Notifications -->
       <div class="relative" ref="notifRef">
         <button
@@ -52,15 +49,15 @@
               </button>
             </div>
 
-            <!-- Notifications list -->
-            <div class="max-h-80 overflow-y-auto">
+            <!-- Notifications list — preview (max 5) -->
+            <div class="max-h-72 overflow-y-auto">
               <div v-if="notifStore.notifications.length === 0" class="py-10 text-center text-gray-400">
                 <div class="text-3xl mb-2">🔕</div>
                 <p class="text-sm">No notifications yet</p>
               </div>
 
               <div
-                v-for="notif in notifStore.notifications"
+                v-for="notif in notifStore.notifications.slice(0, 5)"
                 :key="notif.id"
                 class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0 group"
                 :class="{ 'bg-teal-50/40': !notif.is_read }"
@@ -71,7 +68,7 @@
                   <p class="text-sm font-semibold text-gray-800 leading-tight" :class="{ 'text-gray-600': notif.is_read }">
                     {{ notif.title }}
                   </p>
-                  <p class="text-xs text-gray-500 mt-0.5 leading-tight">{{ notif.message }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5 leading-tight line-clamp-2">{{ notif.message }}</p>
                   <p class="text-xs text-gray-400 mt-1">{{ notifStore.timeAgo(notif.created_at) }}</p>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -82,11 +79,23 @@
                   >✕</button>
                 </div>
               </div>
+
+              <!-- More count if > 5 -->
+              <div v-if="notifStore.notifications.length > 5" class="px-4 py-2 text-center">
+                <span class="text-xs text-gray-400">
+                  +{{ notifStore.notifications.length - 5 }} more notifications
+                </span>
+              </div>
             </div>
 
-            <!-- Footer -->
+            <!-- Footer — navigates to full page -->
             <div class="px-4 py-3 border-t border-gray-100 text-center">
-              <button class="text-xs text-teal-600 font-semibold hover:text-teal-700">View all notifications</button>
+              <button
+                @click="goToNotifications"
+                class="text-xs text-teal-600 font-semibold hover:text-teal-700 flex items-center justify-center gap-1 w-full"
+              >
+                View all notifications →
+              </button>
             </div>
           </div>
         </transition>
@@ -112,7 +121,6 @@
         <!-- User Dropdown -->
         <transition name="slide-down">
           <div v-if="userOpen" class="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-2xl border border-paw-border overflow-hidden">
-            <!-- User header -->
             <div class="px-4 py-4 bg-gradient-to-br from-teal-50 to-white border-b border-gray-100">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
@@ -125,8 +133,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Menu items -->
             <div class="py-1.5">
               <button
                 v-for="item in userMenuItems"
@@ -171,6 +177,7 @@ const pageTitles = {
   '/sales': '💳 Sales',
   '/suppliers': '🏭 Suppliers',
   '/reports': '📈 Reports',
+  '/notifications': '🔔 Notifications',
 }
 
 const pageTitle = computed(() => pageTitles[route.path] || 'Chippie Chomps')
@@ -185,16 +192,17 @@ function toggleUser() {
   notifOpen.value = false
 }
 
+function goToNotifications() {
+  notifOpen.value = false
+  router.push('/notifications')
+}
+
 const userMenuItems = [
-  { icon: '👤', label: 'Edit Profile', action: () => { openSettings('profile'); userOpen.value = false } },
-  { icon: '🔐', label: 'Change Password', action: () => { openSettings('password'); userOpen.value = false } },
-  { icon: '🎨', label: 'Preferences', action: () => { openSettings('preferences'); userOpen.value = false } },
+  { icon: '👤', label: 'Edit Profile', action: () => { emit('open-settings', 'profile'); userOpen.value = false } },
+  { icon: '🔐', label: 'Change Password', action: () => { emit('open-settings', 'password'); userOpen.value = false } },
+  { icon: '🎨', label: 'Preferences', action: () => { emit('open-settings', 'preferences'); userOpen.value = false } },
   { icon: '🚪', label: 'Sign Out', action: handleLogout, danger: true },
 ]
-
-function openSettings(tab) {
-  emit('open-settings', tab)
-}
 
 async function handleLogout() {
   userOpen.value = false
@@ -202,7 +210,6 @@ async function handleLogout() {
   router.push('/login')
 }
 
-// Close dropdowns on outside click
 function handleClick(e) {
   if (notifRef.value && !notifRef.value.contains(e.target)) notifOpen.value = false
   if (userRef.value && !userRef.value.contains(e.target)) userOpen.value = false
